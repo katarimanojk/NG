@@ -1,0 +1,10 @@
+/jf: https://github.com/fultonj/antelope/blob/main/docs/notes/ci_hci.md
+slack discussion: https://redhat-internal.slack.com/archives/CQXJFGMK6/p1697634956393149
+
+This PR from douglas added the HCI multinode job: https://github.com/openstack-k8s-operators/ci-framework/commit/56fea615371e3982347cacf9baf27601945e311c
+
+- This job must do
+   1. controlplane deploy
+   2. edpm deploy (with some manual kustomization for ceph)
+   3. ceph deploy
+
