@@ -3,8 +3,11 @@ slack discussion: https://redhat-internal.slack.com/archives/CQXJFGMK6/p16976349
 
 This PR from douglas added the HCI multinode job: https://github.com/openstack-k8s-operators/ci-framework/commit/56fea615371e3982347cacf9baf27601945e311c
 
-- This job must do
-   1. controlplane deploy
-   2. edpm deploy (with some manual kustomization for ceph)
-   3. ceph deploy
+Job 'podified-multinode-hci-deployment-crc-3comp-testproject' is configured to monitor set of files ci-framework/zuul.d/edpm_multinode.yaml (https://github.com/openstack-k8s-operators/ci-framework/commit/cb779ce53ba55f70a6536d28e3f78d5b0143908f#diff-907d84a405081e9db4210be5cf0000e7c775eec6e874234f282ad829317e6975)
+
+
+- This job must do same steps mentioned here : https://github.com/fultonj/antelope/blob/main/docs/hci.md
+
+
+ci_framework/playbooks/06-deploy-edpm.yml  -> calls ceph playbook
 
