@@ -9,5 +9,68 @@ Job 'podified-multinode-hci-deployment-crc-3comp-testproject' is configured to m
 - This job must do same steps mentioned here : https://github.com/fultonj/antelope/blob/main/docs/hci.md
 
 
-ci_framework/playbooks/06-deploy-edpm.yml  -> calls ceph playbook
+https://zuul.opendev.org/t/openstack/status vs 
+https://review.rdoproject.org/zuul/status
 
+
+podified-multinode-edpm-deployment-crc-3comp' and 'podified-multinode-hci-deployment-crc-3comp'  runs the same parent 'podified-multinode-edpm-deployment-crc'
+
+flow:  track from bottom.
+
+
+
+zuul.d/base.yaml: +93
+
+- job:
+    name: cifmw-podified-multinode-edpm-base-crc
+    parent: base-extracted-crc
+
+    required-projects:
+      - openstack-k8s-operators/ci-framework
+      - openstack-k8s-operators/dataplane-operator
+      - openstack-k8s-operators/install_yamls
+      - openstack-k8s-operators/infra-operator
+      - openstack-k8s-operators/openstack-baremetal-operator
+      - openstack-k8s-operators/openstack-operator
+      - openstack-k8s-operators/repo-setup
+      - openstack-k8s-operators/edpm-ansible
+    roles:
+      - zuul: github.com/openstack-k8s-operators/ci-framework
+    pre-run:
+      - ci/playbooks/multinode-customizations.yml
+      - ci/playbooks/e2e-prepare.yml
+      - ci/playbooks/dump_zuul_data.yml
+    post-run:
+      - ci/playbooks/e2e-collect-logs.yml
+      - ci/playbooks/collect-logs.yml
+      - ci/playbooks/multinode-autohold.yml
+
+
+'podified-multinode-edpm-deployment-crc-3comp' and 'podified-multinode-hci-deployment-crc-3comp'  runs the same parent 'podified-multinode-edpm-deployment-crc' with different parameters
+e.g: hci has ceph stuff
+
+
+- job:
+    name: podified-multinode-edpm-deployment-crc
+    parent: cifmw-podified-multinode-edpm-base-crc
+    vars:
+      cifmw_extras:
+        - '@scenarios/centos-9/multinode-ci.yml'
+    run:
+      - ci/playbooks/edpm/run.yml
+
+
+
+
+/ci/playbooks/e2e-run.yml:12:          ansible-playbook deploy-edpm.yml
+or
+./ci/playbooks/edpm/run.yml:22:          ansible-playbook deploy-edpm.yml
+
+
+deploy-edpm.yml
+- name: Import deploy edpm playbook
+  ansible.builtin.import_playbook: ci_framework/playbooks/06-deploy-edpm.yml
+  tags:
+    - edpm
+
+ci_framework/playbooks/06-deploy-edpm.yml  -> deploy controlplane, dataplane, pre-ceph, ceph playbook, post-ceph etc
