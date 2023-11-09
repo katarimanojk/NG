@@ -5,18 +5,19 @@ source: https://github.com/fultonj/antelope/blob/main/docs/hci.md
 ************************************************
 ------ install_yamls with operators for openstack, ceph, edpm and other services
 
-sudo su - manoj
-passwd manoj
+1. sudo su - manoj
 
-vi /etc/sudoers
+2. passwd manoj
 
-sudo dnf update -y
+3. in /etc/sudoers, add "manoj   ALL=(ALL)       NOPASSWD: ALL"
 
-sudo dnf install python3 git-core make gcc -y
+4. sudo dnf update -y
 
-git clone https://github.com/openstack-k8s-operators/install_yamls ~/install_yamls
+5. sudo dnf install python3 git-core make gcc -y
 
-cd ~/install_yamls/devsetup
+6. git clone https://github.com/openstack-k8s-operators/install_yamls ~/install_yamls
+
+7. cd ~/install_yamls/devsetup
 
 pull secret from: https://console.redhat.com/openshift/create/local
 
@@ -33,6 +34,7 @@ sudo dnf install -y ansible-core
 make download_tools
 
 eval $(crc oc-env)
+
 oc login -u kubeadmin -p 12345678 https://api.crc.testing:6443
 
 
@@ -71,6 +73,7 @@ for i in 0 1 2; do EDPM_COMPUTE_SUFFIX=$i make edpm_compute_repos; done   (depre
 pushd ~/install_yaml
 DATAPLANE_CHRONY_NTP_SERVER=clock.redhat.com DATAPLANE_TOTAL_NODES=3 DATAPLANE_SINGLE_NODE=false make edpm_deploy_prep
 
+Note: if your antelope repo is updated, you can directly run 'oc create -f data.yaml'
 TARGET=$HOME/antelope/crs/data_plane/base/deployment.yaml
 oc kustomize out/openstack/dataplane/cr > $TARGET
 
@@ -101,6 +104,10 @@ remove OpenStackDataPlaneDeployment content from data.yaml as shown below
 oc create -f data.yaml
 
 oc create -f deployments/deployment-pre-ceph.yaml
+
+
+##install ceph
+https://github.com/fultonj/antelope/blob/main/docs/hci.md#install-ceph-on-edpm-nodes
 
 
 
