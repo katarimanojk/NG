@@ -87,7 +87,12 @@ oc create -f deployments/deployment-pre-ceph.yaml
 ```
 
 ##install ceph
+Note: ensure to do exports every time you use a new tab to run ceph playbook
 https://github.com/fultonj/antelope/blob/main/docs/hci.md#install-ceph-on-edpm-nodes
+
+observe ceph logs here
+[cloud-admin@edpm-compute-0 ~]$ vi /var/log/ceph/cephadm.log
+
 
 
 ```
