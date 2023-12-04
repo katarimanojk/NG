@@ -49,3 +49,15 @@ ok: [192.168.122.100]
 
 
 
+
+
+## misc
+
+Ensure the public_network and cluster_network map to the same networks as storage and storage_mgmt.
+
+
+
+
+
+
+
