@@ -61,3 +61,66 @@ Ensure the public_network and cluster_network map to the same networks as storag
 
 
 
+## talk with alan on jan17
+
+iscsi job that test lvm backend
+
+Alan wants to develop his DT for cinder
+
+
+
+
+
+install_yamls only for developers
+
+deploy all the operators on crc node
+
+
+
+ci_framework: 
+
+  - tool kit for building ci jobs (both upstream and downstream)
+      tripleo : upstream/IR
+
+
+reproducer
+
+
+create a vm called controller(ansible) not a openstack controller
+
+and then execute other stuff on controlle
+
+
+
+
+
+
+
+    - name: Run ceph config dump to get pool
+      command: "{{ tripleo_cephadm_ceph_cli }} config dump --format json"
+      register: ceph_config_dump
+      become: true
+
+    - name: Extract manoj dump_json
+      set_fact:
+        osd_pool_default_pg_num: "{{ item.value }}"
+        #msg: "{{ (ceph_config_dump.stdout | from_json) |  map(attribute='osd_pool_default_pg_num') }}"
+      loop: "{{ ceph_config_dump.stdout | from_json }}"
+      when: item.name == 'osd_pool_default_pg_num'
+
+    - name: manoj debug
+      debug:
+        msg: "{{ osd_pool_default_pg_num }}"
+
+
+
+#tripleo_cephadm_container_ns: "quay.io/ceph"
+#tripleo_cephadm_container_image: "ceph"
+#tripleo_cephadm_container_tag: "v18"
+
+tripleo_cephadm_container_ns: "undercloud-0.ctlplane.redhat.local:8787/rh-osbs"
+tripleo_cephadm_container_image: "rhceph"
+tripleo_cephadm_container_tag: "6-199"
+~                                        
+
+

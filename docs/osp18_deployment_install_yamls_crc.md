@@ -14,6 +14,15 @@ https://docs.engineering.redhat.com/display/~ykarel/Deploy+Openstack+Operators
 
 https://github.com/openstack-k8s-operators/install_yamls/tree/main/devsetup
 
+ahishek sessions: https://docs.google.com/spreadsheets/d/1_72Bem2-C6RIYXddohRosaFWyy-4qWMZxyo076sZMZw/edit#gid=0
+
+gorkas steps: https://docs.google.com/spreadsheets/d/1HfhJQeMCgzmBKEzrg6a-Jkow-RYzvFBI6CGHoXuQIWQ/edit#gid=757678200
+
+rhoso_doc: https://docs.google.com/document/d/1xQS4Q6Zs80YVgl2zC9uN6378zE9lYw9ve0PX-M_wJkg/edit#heading=h.p6p5hnls2qbg
+
+
+
+
 
 ## Steps:
 
@@ -29,7 +38,8 @@ Note: install_yamls have operators for openstack, ceph, edpm and other services
  git clone https://github.com/openstack-k8s-operators/install_yamls ~/install_yamls
  cd ~/install_yamls/devsetup
  pull secret from: https://console.redhat.com/openshift/create/local to .
- CPUS=10 MEMORY=26000 DISK=80 make crc      #crc vm is created here
+ #deploy OCP
+ CPUS=10 MEMORY=26000 DISK=80 make crc      #crc vm is created here, day1 ops are completed
  crc config view
  export PATH=$PATH:/home/manoj/bin
  #ssh -i ~/.crc/machines/crc/id_ecdsa core@192.168.130.11   # check the crc vm
@@ -40,6 +50,7 @@ Note: install_yamls have operators for openstack, ceph, edpm and other services
  make download_tools
  eval $(crc oc-env)
  oc login -u kubeadmin -p 12345678 https://api.crc.testing:6443
+ # only one crc vm and crc network is created earlier in make crc, below step attaches new interface and adds a dhcp entry 
  make crc_attach_default_interface
 ```
  Note: crc_attach_default_interface attaches enp6s0 interface which is required by NETWORK_ISOLATION=true without this, we see below error during make openstack
@@ -55,7 +66,7 @@ cd ..
 make crc_storage
 make input
 make input
-make openstack
+make openstack  # this is simillar to deploying undercloud where openshift nmstate, cert, metallb operator is deployed
 #make openstack NETWORK_ISOLATION=false make openstack
 make openstack_deploy
 #make openstack_deploy NETWORK_ISOLATION=false make openstack_deploy

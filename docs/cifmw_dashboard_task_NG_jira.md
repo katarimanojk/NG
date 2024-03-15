@@ -84,3 +84,20 @@ verify error:num=18:self-signed certificate
   <title>Ceph</title>                                                                                                                                                                         
                                                                                                             
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+
+
+# improvements to validation
+
+
+$ URL=https://example.com
+$ curl http://172.18.0.102:8444 -s -o /dev/null -w "response_code: %{http_code} dns_time: %{time_namelookup} connect_time: %{time_connect} pretransfer_time: %{time_pretransfer} starttransfer_time: %{time_starttransfer} total_time: %{time_total}
+response_code: 200
+
+dns_time: 0.029
+connect_time: 0.046
+pretransfer_time: 0.203
+starttransfer_time: 0.212
+total_time: 0.212
+

@@ -8,9 +8,17 @@ git pull --rebase k8s-cifmw main
 git push -u origin cifmw_dashboard_validation -f
 
 
+## podman
+
+sudo podman ps --format '{{ .Names }}G
+
+sudo podman run --rm --entrypoint ceph undercloud-0.ctlplane.redhat.local:8787/rh-osbs/rhceph:6-199 -v                       
+
 ### Apply a github PR as a patch
 [controller-0]$ curl https://raw.githubusercontent.com/openstack-k8s-operators/ci-framework/24a10cacca06a5181b880b93af574f4597fb227e/ci_framework/roles/cifmw_cephadm/tasks/cephadm_config_set.yml > roles/cifmw_cephadm/tasks/cephadm_config_set.yml
 
+[zuul@controller-0 ci-framework]$ sudo podman run --rm --entrypoint ceph quay.io/ceph/ceph:v18.2  -v
+ceph version 18.2.1 (7fe91d5d5842e04be3b4f514d6dd990c54b29c76) reef (stable)
 
 
 podman run --rm --net=host --ipc=host --volume /etc/ceph:/etc/ceph:z --volume /home/ceph-admin/assimilate_ceph.conf:/home/assimilate_ceph.conf:z --volume /tmp/ceph_rgw.yml:/home/ceph_spec.yaml:z --entrypoint ceph quay.io/ceph/ceph:v18.2 --fsid b4cab80c-922b-5dc9-9f38-84f6dacc6029 -c /etc/ceph/ceph.conf -k /etc/ceph/ceph.client.admin.keyring orch apply --in-file /home/ceph_spec.yaml
@@ -29,9 +37,69 @@ sudo podman run --rm --net=host --ipc=host --volume /etc/ceph:/etc/ceph:z --volu
 #run the ceph playbook and see if it generates spec in /tmp/ceph_rgw.yml using /etc/pki/tls/example.com.crt set in default/main.yaml
 
 
+cpeh orch host ls
+
+device/osd:
+ceph orch device ls
+ceph-volume lvm list
+lsblk
 
 ceph orch ls --export ingress
 ceph orch ls --export rgw
+
+
+
+rbd -p images ls -l
+rbd -p volues ls -l
+
+ ceph config rm global osd_pool_default_pgp_num
+ ceph config rm global osd_pool_default_pg_num
+
+ ceph config set global osd_pool_default_pg_num 16                                                                                                                                                        [52/614]
+ ceph config set global osd_pool_default_pgp_num 16
+
+
+ ceph osd pool ls
+ ceph osd pool ls detail
+
+
+#mount a direcotry to cephadm sell/ container
+sudo cephadm shell -m tmp_spec
+ceph orch apply -i /mnt/tmp_spec/mon.spec;done
+
+
+podman run --rm --net=host --ipc=host   --volume /etc/ceph:/etc/ceph:z --volume /home/ceph-admin/assimilate_ceph.conf:/home/assimilate_ceph.conf:z   --volume /home/ceph-admin/specs/ceph_spec.yaml:/home/ceph_spec.yaml:z   --entrypoint ceph registry-proxy.engineering.redhat.com/rh-osbs/rhceph:7 --fsid 427cfd09-53a9-5f6e-adf1-5ceb9ac56f47 -c /etc/ceph/ceph.conf -k /etc/ceph/ceph.client.admin.keyring   orch apply --in-file /home/ceph_spec.yaml
+
+
+podman run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z -v /home/ceph-admin/specs/grafana:/home/ceph-admin/specs/grafana:z --entrypoint=ceph quay.ceph.io/ceph-ci/ceph:reef -n client.admin -k /etc/ceph/ceph.client.admin.keyring --cluster ceph orch apply --in-file /home/ceph-admin/specs/grafana
+
+
+# redeploy
+ceph orch redploy rgw.rgw
+
+## redeploy monitoring stack after setting it new image in ceph mgr config
+sudo cephadm shell -- ceph config set mgr mgr/cephadm/container_image_node_exporter undercloud-0.ctlplane.redhat.local:8787/rh-osbs/openshift-ose-prometheus-node-exporter:v4.12 
+for daemon in node-exporter grafana alertmanager prometheus; do sudo cephadm shell -- ceph orch redeploy $daemon; done
+
+
+
+# dump rgw spec
+ceph orch ls --export rgw 
+
+vi rgw
+
+
+
+#enable rgw daemon debug logs
+ceph --admin-daemon /var/run/ceph/ceph-client.rgw.rgw.compute-0.umbshq.2.94082084575472.asok config set debug_rgw 20 
+ceph --admin-daemon /var/run/ceph/ceph-client.rgw.rgw.compute-0.umbshq.2.94082084575472.asok config set debug_ms 1 
+
+vi /var/log/ceph/cep
+
+/var/run/ceph/ceph-client.rgw.rgw.compute-0.umbshq.2.94082084575472.asok
+
+
+watch ceph orch ps
 
 
 

@@ -55,10 +55,19 @@ sudo podman run --rm --net=host --ipc=host --volume /etc/ceph:/etc/ceph:z --volu
 # ade lee patch to generate certificate
 
 https://github.com/openstack-k8s-operators/dataplane-operator/pull/553/files
-https://github.com/openstack-k8s-operators/edpm-ansible/pull/525  and https://github.com/openstack-k8s-operators/dataplane-operator/pull/585
 
-above PRs add feature in data plane operator to generate certs and edpm role to install certificate for specific service 
-adds the service 'install-certs' in dataplane 
+- above PRs add feature in data plane operator to generate certs 
+
+https://github.com/openstack-k8s-operators/dataplane-operator/pull/585
+- adds the service 'config/services/dataplane_v1beta1_openstackdataplaneservice_install_certs.yaml' in dataplane 
+-  install_certs service is by default added to dataplane deployment
+- this service calls install-cets playbook added in below PR 
+
+https://github.com/openstack-k8s-operators/edpm-ansible/pull/525  
+
+- edpm role to install certificate for specific service 
+
+
 
 iiuc , we can update nova service with 2 params belwo
 
@@ -66,7 +75,7 @@ iiuc , we can update nova service with 2 params belwo
   issuers:
     default: osp-rootca-issuer-internal
 
-services/dataplane_v1beta1_openstackdataplaneservice_nova_custom_ceph.yaml
+services/dataplane_v1beta1_openstackdataplaneservice_ceph_hci_pre.yaml  or  services/dataplane_v1beta1_openstackdataplaneservice_nova_custom_ceph.yaml 
 
 simillar to https://github.com/openstack-k8s-operators/dataplane-operator/blob/ab98fc72a06d01a8523b1d2d5164bc93f7e14588/config/services/dataplane_v1beta1_openstackdataplaneservice_nova.yaml#L14
 
@@ -79,6 +88,12 @@ and then use the path in ceph overrides
 
 
 
+
+
+
+
+
+but how do i patch dataplane-operator and epdm changes into my crc env ?
 
 ## testing 
 

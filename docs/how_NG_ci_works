@@ -74,3 +74,5 @@ deploy-edpm.yml
     - edpm
 
 ci_framework/playbooks/06-deploy-edpm.yml  -> deploy controlplane, dataplane, pre-ceph, ceph playbook, post-ceph etc
+
+  - this playbook calls roles/edpm_prepare/tasks/main.yml which deploys controlplane
