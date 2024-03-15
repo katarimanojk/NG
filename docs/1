@@ -1,0 +1,14 @@
+
+
+oc get cm openstack-config -o json | jq -r '.data["clouds.yaml"]'
+
+
+
+oc get catalogsources -A
+
+# catalogsources are the bundles served to operators in the namespace for any queries
+
+oc get packagemanifests :
+
+# inspect the content of a index/catalog image
+opm index export --index="quay.io/...." -c podman 

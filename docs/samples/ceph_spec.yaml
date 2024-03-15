@@ -1,0 +1,74 @@
+
+[stack@undercloud-0 ~]$ cat ./overcloud-deploy/overcloud/generated_ceph_spec.yaml
+---
+addr: 192.168.24.53
+hostname: controller-0
+labels:
+- _admin
+- mgr
+- mon
+service_type: host
+---
+addr: 192.168.24.14
+hostname: controller-1
+labels:
+- _admin
+- mgr
+- mon
+service_type: host
+---
+addr: 192.168.24.47
+hostname: controller-2
+labels:
+- _admin
+- mgr
+- mon
+service_type: host
+---
+addr: 192.168.24.48
+hostname: cephstorage-0
+labels:
+- osd
+service_type: host
+---
+addr: 192.168.24.21
+hostname: cephstorage-1
+labels:
+- osd
+service_type: host
+---
+addr: 192.168.24.55
+hostname: cephstorage-2
+labels:
+- osd
+service_type: host
+---
+placement:
+  hosts:
+  - controller-0
+  - controller-1
+  - controller-2
+service_id: mon
+service_name: mon
+service_type: mon
+---
+placement:
+  hosts:
+  - controller-0
+  - controller-1
+  - controller-2
+service_id: mgr
+service_name: mgr
+service_type: mgr
+---
+data_devices:
+  all: true
+placement:
+  hosts:
+  - cephstorage-0
+  - cephstorage-1
+  - cephstorage-2
+service_id: default_drive_group
+service_name: osd.default_drive_group
+service_type: osd
+[stack@undercloud-0 ~]$ 

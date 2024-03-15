@@ -1,0 +1,101 @@
+
+## reproduce
+
+ - name: Create pool
+      command: "{{ tripleo_cephadm_ceph_cli }} osd pool create {{ item.name }} {{ item.pg_num | default('') }} {{ item.rule_name | default('replicated_rule') }} --autoscale-mode {{ item.pg_autoscale | default('on') }}"
+
+
+
+2024-01-29 07:52:58.034783 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |       TASK | Create pool
+2024-01-29 07:52:59.534748 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |         OK | Create pool | controller-0 | item={'application': 'rbd', 'name': 'vms', 'pg_autoscale_mode': True, 'target_size_ratio': 0.3}                                
+2024-01-29 07:52:59.537322 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |     TIMING | tripleo_cephadm : Create pool | controller-0 | 0:01:02.762650 | 1.50s                                                                                       
+2024-01-29 07:53:00.922347 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |         OK | Create pool | controller-0 | item={'application': 'rbd', 'name': 'volumes', 'pg_autoscale_mode': True, 'target_size_ratio': 0.5}                            
+2024-01-29 07:53:00.923388 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |     TIMING | tripleo_cephadm : Create pool | controller-0 | 0:01:04.148777 | 2.89s                                                                                       
+2024-01-29 07:53:02.514496 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |         OK | Create pool | controller-0 | item={'application': 'rbd', 'name': 'images', 'pg_autoscale_mode': True, 'target_size_ratio': 0.2}                             
+2024-01-29 07:53:02.515733 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |     TIMING | tripleo_cephadm : Create pool | controller-0 | 0:01:05.741120 | 4.48s                                                                                       
+2024-01-29 07:53:03.969442 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |      FATAL | Create pool | controller-0 | item={'application': 'rbd', 'name': 'manoj', 'pg_autoscale_mode': True, 'target_size_ratio': 0.2} | error={"ansible_loop_var": "
+item", "changed": false, "cmd": ["podman", "run", "--rm", "--net=host", "--ipc=host", "--volume", "/etc/ceph:/etc/ceph:z", "--volume", "/home/ceph-admin/assimilate_ceph.conf:/home/assimilate_ceph.conf:z", "--entrypoint", "ceph", "underclo
+ud-0.ctlplane.redhat.local:8787/rh-osbs/rhceph:6-199", "--fsid", "8f0c753d-70bc-57b2-bd34-dc610f8d58e2", "-c", "/etc/ceph/ceph.conf", "-k", "/etc/ceph/ceph.client.admin.keyring", "osd", "pool", "create", "manoj", "replicated_rule", "--aut
+oscale-mode", "on"], "delta": "0:00:00.920627", "end": "2024-01-29 07:53:03.931347", "item": {"application": "rbd", "name": "manoj", "pg_autoscale_mode": true, "target_size_ratio": 0.2}, "msg": "non-zero return code", "rc": 34, "start": "
+2024-01-29 07:53:03.010720", "stderr": "Error ERANGE: 'pgp_num' must be greater than 0 and lower or equal than 'pg_num', which in this case is 1", "stderr_lines": ["Error ERANGE: 'pgp_num' must be greater than 0 and lower or equal than 'p
+g_num', which in this case is 1"], "stdout": "", "stdout_lines": []}
+2024-01-29 07:53:03.970564 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |     TIMING | tripleo_cephadm : Create pool | controller-0 | 0:01:07.195951 | 5.93s
+2024-01-29 07:53:03.978666 | 5254005a-8be5-b2e5-e4bd-0000000000d4 |     TIMING | tripleo_cephadm : Create pool | controller-0 | 0:01:07.204043 | 5.94s
+
+
+
+sol:
+
+started with
+
+   #msg: "{{ (ceph_config_dump.stdout | from_json) |  map(attribute='osd_pool_default_pg_num') }}" 
+
+but it didn't work
+
+
+if it is set, extract it and use it
+
+ 
+
+   command: "{{ tripleo_cephadm_ceph_cli }} osd pool create {{ item.name }} {{ item.pg_num | default(osd_pool_default_pg_num|default('')) }} {{ item.rule_name | default('replicated_rule') }} --autoscale-mode {{ item.pg_autoscale | default('on') }}"
+
+
+
+
+
+[ceph: root@controller-0 /]# ceph config set global osd_pool_default_pgp_num 16
+[ceph: root@controller-0 /]# ceph config set global osd_pool_default_pg_num 16
+\
+[ceph: root@controller-0 /]# ceph osd pool create test2 replicated_rule --autoscale-mode on
+Error ERANGE: 'pgp_num' must be greater than 0 and lower or equal than 'pg_num', which in this case is 1
+[ceph: root@controller-0 /]# 
+
+[ceph: root@controller-0 /]# ceph config rm global osd_pool_default_pgp_num                                                                                                                                                                  
+[ceph: root@controller-0 /]# ceph config rm global osd_pool_default_pg_num                                                                                                                                                                   
+[ceph: root@controller-0 /]# 
+[ceph: root@controller-0 /]# ceph osd pool create test replicated_rule --autoscale-mode on
+pool 'test' created
+
+
+
+
+
+
+alfredo was trying use the IR job :
+
+IR patch https://review.gerrithub.io/c/redhat-openstack/infrared/+/1177257/1/plugins/tripleo-overcloud/templates/storage/internal.yml.j2#b22 to avoid appending pg_num in pool creation command.
+
+but he doesn't use tripleo_cephadm_pools via --ansible-extra-vars so his ceph deploy will not create pools. instead, IR code https://github.com/redhat-openstack/infrared/blob/master/plugins/tripleo-overcloud/templates/storage/internal.yml.j2 is updated to set ceph pools which creates pool during cephadm playbook execution.
+
+but he cannot set osd_pool_default_pgp_num manually as the ceph cluster doesn't exist at all.
+
+
+
+so how to test:
+
+Note: ceph deploy command should be updated to use tripleo_cephadm_pools via --ansible-extra-vars and --force.
+
+Postive case:
+step1:
+delete the created pools manually.
+
+step2:
+run ceph_deploy and pool creation should be successful (uses the below command)
+#ceph osd pool create test replicated_rule --autoscale-mode on   
+created pools will have pg_num=32 by default.
+
+
+Failed case:
+step1:
+set pg_num manually to 16 using the below commands
+# ceph config set global osd_pool_default_pgp_num 16
+# ceph config set global osd_pool_default_pg_num 16
+
+step2:
+delete the created pools manually.
+
+step3:
+run ceph_deploy , new patch should pick the pg_num(16) from the manual config and pool creation should be successful.
+
+
+
