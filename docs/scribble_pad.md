@@ -1,3 +1,171 @@
+# rough book
+
+
+
+/ud monday 1:1
+----
+
+before adoption, volumes , operations after the adoption
+
+udpate jira
+
+
+--
+Spike
+
+entry criteria:
+ - Dod is ready
+
+exit:
+ - 
+
+ - spike
+ 
+ 
+ 
+ story, 
+   - name of the job
+   - url of the job
+   - what tests it is running
+   - test results
+   
+---   
+   
+   
+
+
+
+
+glance validaiton is not checking backend is correct or image
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+================
+
+Volume:
+At its core, a volume is a directory, possibly with some data in it, which is accessible to the containers in a pod
+
+Ephemeral volume types have a lifetime of a pod, but persistent volumes exist beyond the lifetime of a pod.
+
+Note:   https://github.com/openstack-k8s-operators/lib-common/tree/main/modules/storage/storage.go module handles volumes and volumemounts
+
+extraMounts -> extra volumes
+
+pod:
+spec.volumes
+spec.container.volumemounts : where to mount those volumes into container
+
+propogation: 
+  external : ability to allocate and mount a volume across operators
+  internal : propogate an extraVolume with in a single operator
+
+  global  -> all the entities in the operator can mount 
+  group:  cinder-volume  -> all pods of cinder-volume 
+  instance: volume1    -> mount the extravolume on the pod related to volume1 backend
+
+
+eg:
+ extraMounts:
+  - name:
+    region:
+    extraVol:
+     - propogation:
+        - Glance  # extra volume is mounted to all 
+        - volume1
+       volumes:
+        - name : ceph
+       mounts:
+        - name : ceph
+          mountpah: "/etc/ceph"  
+     - propogation:
+       - compute    # edpmd ansible-ee-operator
+       - cinderBackup 
+
+
+
+
+
+compile and build the operator:
+
+make generate && make manifests &&  make
+
+
+
+operator:
+
+define spec.ExtraMounts 
+
+
+
+[mkatari@fedora cinder-operator_myfork]$ vi ./api/v1beta1/
+cinderapi_types.go        cinderscheduler_types.go  cindervolume_types.go     common_types.go           groupversion_info.go      
+cinderbackup_types.go     cinder_types.go           cinder_webhook.go         conditions.go             zz_generated.deepcopy.go  
+[mkatari@fedora cinder-operator_myfork]$ find . -name cinder_types.go
+
+
+at the end add 
+ExtraMounts []storage.volMounts `json:"extraMounts"` 
+
+
+and then add storage module in import section
+
+and do 'go get github.com/openstack-k8s-operators/lib-common/tree/main/modules/storage/storage.go'
+
+go mod tidy
+
+make generate && make manifests &&  make
+
+
+which should update the crds with extravolumes.
+
+
+now update pkg/<operator_name>>/const.go with
+
+horizon storage.propgationType = "Horion"
+and import module
+
+pkg/<operator_name>>/deployment.go  , update getvolumeMounts to accept a paramter for extramounts
+
+
+
+
+
+
+logic to process extramounts  in deployemnts/statefulsets
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # imp
 
 
@@ -181,3 +349,10 @@ We have an RGW key for ceph clients at:
 but that's distinct from this key:
 
   /var/lib/ceph/radosgw/ceph-rgw.openstack/keyring
+
+
+
+
+
+github 2FA request:
+https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/recovering-your-account-if-you-lose-your-2fa-credentials#requesting-help-with-two-factor-authentication

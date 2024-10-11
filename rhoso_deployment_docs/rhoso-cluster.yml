@@ -1,0 +1,51 @@
+cluster: rhoso
+domain: openshift.local
+tag: '4.16'
+version: stable
+pull_secret: pull-secret
+ctlplanes: 3
+workers: 0
+
+ctlplane_memory: 32768
+ctlplane_numcpus: 16
+disk_size: 100
+
+# This network is created using kcli
+network: ocpnet
+extra_ctlplane_networks: [default]
+
+baremetal_cidr: 192.168.131.0/24
+api_ip: 192.168.131.9
+network_type: OVNKubernetes
+reserveip: true
+reservehost: true
+reservedns: true
+
+# fips: true
+
+# Note: the 'ocp' network must be first in the nets list
+vmrules:
+- rhoso-ctlplane-0:
+    nets:
+    - name: ocpnet
+      mac: aa:aa:aa:aa:bb:04
+      ip: 192.168.131.10
+    - name: default
+      mac: aa:aa:aa:aa:bb:03
+      # Reserved IPs are only supported on the first network, so
+      # this will not work.
+      # ip: 192.168.122.10
+- rhoso-ctlplane-1:
+    nets:
+    - name: ocpnet
+      mac: aa:aa:aa:aa:bb:06
+      ip: 192.168.131.11
+    - name: default
+      mac: aa:aa:aa:aa:bb:05
+- rhoso-ctlplane-2:
+    nets:
+    - name: ocpnet
+      mac: aa:aa:aa:aa:bb:08
+      ip: 192.168.131.12
+    - name: default
+      mac: aa:aa:aa:aa:bb:07

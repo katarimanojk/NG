@@ -7,6 +7,7 @@ in 13.1.4, it calls
 
 https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/6/html/upgrade_guide/upgrade-a-red-hat-ceph-storage-cluster-using-cephadm
 
+/fp notes: https://docs.google.com/document/d/14R9bVuz-jpdkVqLACAyXYQozHZJ3vsS4igntfv59Ht8/edit
 
 
 check bz_2278836_ceph_5-6_issue_monitoring_stack.md for upgrading dashbaord daemons also

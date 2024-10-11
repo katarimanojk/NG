@@ -227,3 +227,15 @@ oc rsh openstackclient openstack user delete swift
 oc rsh openstackclient openstack service delete swift
 
 
+
+Testing:
+
+comment kubeconfig part
+
+-  environment:                                                                                                        
+-    KUBECONFIG: "{{ cifmw_openshift_kubeconfig }}"                                                                                                                                                                                           
++  #environment:                                                                                                                                                                                                                              
++  # KUBECONFIG: "{{ cifmw_openshift_kubeconfig }}"                                                                                                                                                                                           
+   delegate_to: localhost                                                                                                                                                                                                                     
+-  when: cifmw_openshift_kubeconfig is defined                                                                                                                                                                                                
++    #when: cifmw_openshift_kubeconfig is defined     

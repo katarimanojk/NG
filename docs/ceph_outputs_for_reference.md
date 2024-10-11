@@ -307,5 +307,58 @@ osd.default_drive_group                              3  8m ago     25m  compute-
 prometheus               ?:9095                    1/1  6m ago     23m  compute-0;count:1              
 rgw.rgw                  ?:8082                    3/3  8m ago     21m  compute-0;compute-1;compute-2  
 
-
+#ceph orch ps
+Inferring fsid 279c19fd-1e4a-535c-a07a-ae91b536ab3e
+Inferring config /var/lib/ceph/279c19fd-1e4a-535c-a07a-ae91b536ab3e/mon.controller-0/config
+Using ceph image with id '1af7b794f353' and tag '6-199' created on 2023-07-26 19:11:48 +0000 UTC
+undercloud-0.ctlplane.redhat.local:8787/rh-osbs/rhceph@sha256:aa68701446f0401dd61a46ae1486e7eb50d56d744ed22d99fef51c6c3d8aa8d7
+NAME                         HOST           PORTS                   STATUS         REFRESHED  AGE  MEM USE  MEM LIM  VERSION           IMAGE ID      CONTAINER ID  
+alertmanager.controller-0    controller-0   172.17.3.68:9093,9094   running (19h)     5m ago  19h    36.9M        -  0.23.0            5ad97095676e  7451530e52ae  
+alertmanager.controller-1    controller-1   172.17.3.136:9093,9094  running (19h)     5m ago  19h    31.3M        -  0.23.0            5ad97095676e  50b86eedd124  
+alertmanager.controller-2    controller-2   172.17.3.96:9093,9094   running (19h)     5m ago  19h    31.9M        -  0.23.0            5ad97095676e  2b7d5793f197  
+crash.cephstorage-0          cephstorage-0                          running (20h)     6m ago  20h    6895k        -  17.2.6-100.el9cp  1af7b794f353  1efbe350ad11  
+crash.cephstorage-1          cephstorage-1                          running (20h)     6m ago  20h    6899k        -  17.2.6-100.el9cp  1af7b794f353  6c5c964f85e1  
+crash.cephstorage-2          cephstorage-2                          running (20h)     6m ago  20h    6899k        -  17.2.6-100.el9cp  1af7b794f353  74e5e719db1c  
+crash.controller-0           controller-0                           running (20h)     5m ago  20h    6899k        -  17.2.6-100.el9cp  1af7b794f353  96e58a44930d  
+crash.controller-1           controller-1                           running (20h)     5m ago  20h    6895k        -  17.2.6-100.el9cp  1af7b794f353  5160f5c792d4  
+crash.controller-2           controller-2                           running (20h)     5m ago  20h    6903k        -  17.2.6-100.el9cp  1af7b794f353  1a5ecb60686c  
+grafana.controller-0         controller-0   172.17.3.68:3100        running (19h)     5m ago  19h    79.9M        -  <unknown>         9926ad0ec67e  7909f339631b  
+grafana.controller-1         controller-1   172.17.3.136:3100       running (19h)     5m ago  19h    90.3M        -  <unknown>         9926ad0ec67e  aa9e188a10ce  
+grafana.controller-2         controller-2   172.17.3.96:3100        running (19h)     5m ago  19h    89.9M        -  <unknown>         9926ad0ec67e  8732739559e9  
+mds.mds.controller-0.rlehnz  controller-0                           running (19h)     5m ago  19h    25.0M        -  17.2.6-100.el9cp  1af7b794f353  e40bbffa29e8  
+mds.mds.controller-1.wbuwog  controller-1                           running (19h)     5m ago  19h    26.0M        -  17.2.6-100.el9cp  1af7b794f353  9aa5736ab00d  
+mds.mds.controller-2.aqqkoo  controller-2                           running (19h)     5m ago  19h    38.3M        -  17.2.6-100.el9cp  1af7b794f353  3a02e9fb251a  
+mgr.controller-0.nrbaoj      controller-0   *:9283                  running (20h)     5m ago  20h     548M        -  17.2.6-100.el9cp  1af7b794f353  a93e2686bd1e  
+mgr.controller-1.amtdus      controller-1                           running (20h)     5m ago  20h     413M        -  17.2.6-100.el9cp  1af7b794f353  b5237bfac398  
+mgr.controller-2.scllhx      controller-2                           running (20h)     5m ago  20h     412M        -  17.2.6-100.el9cp  1af7b794f353  2c2d12806077  
+mon.controller-0             controller-0                           running (20h)     5m ago  20h     414M    2048M  17.2.6-100.el9cp  1af7b794f353  23eeb201e1d7  
+mon.controller-1             controller-1                           running (20h)     5m ago  20h     407M    2048M  17.2.6-100.el9cp  1af7b794f353  55bebfa7a54e  
+mon.controller-2             controller-2                           running (20h)     5m ago  20h     404M    2048M  17.2.6-100.el9cp  1af7b794f353  a65d19ae68b9  
+node-exporter.cephstorage-0  cephstorage-0  172.17.3.29:9100        running (19h)     6m ago  19h    20.4M        -  1.3.1             c5fea2f9a0cd  c85c109225a9  
+node-exporter.cephstorage-1  cephstorage-1  172.17.3.45:9100        running (19h)     6m ago  19h    19.5M        -  1.3.1             c5fea2f9a0cd  c601816e1f6f  
+node-exporter.cephstorage-2  cephstorage-2  172.17.3.117:9100       running (19h)     6m ago  19h    23.2M        -  1.3.1             c5fea2f9a0cd  96cc22ffe1c9  
+node-exporter.controller-0   controller-0   172.17.3.68:9100        running (19h)     5m ago  19h    31.9M        -  1.3.1             c5fea2f9a0cd  d341ce184925  
+node-exporter.controller-1   controller-1   172.17.3.136:9100       running (19h)     5m ago  19h    29.1M        -  1.3.1             c5fea2f9a0cd  f65b415e49ce  
+node-exporter.controller-2   controller-2   172.17.3.96:9100        running (19h)     5m ago  19h    28.7M        -  1.3.1             c5fea2f9a0cd  b5e1357cd1ee  
+osd.0                        cephstorage-0                          running (20h)     6m ago  20h     425M    4096M  17.2.6-100.el9cp  1af7b794f353  e39c91c81483  
+osd.1                        cephstorage-2                          running (20h)     6m ago  20h     540M    4096M  17.2.6-100.el9cp  1af7b794f353  3779e9fc44e2  
+osd.2                        cephstorage-1                          running (20h)     6m ago  20h     463M    4096M  17.2.6-100.el9cp  1af7b794f353  7166e9cb64ac  
+osd.3                        cephstorage-0                          running (20h)     6m ago  20h     364M    4096M  17.2.6-100.el9cp  1af7b794f353  ab0499372065  
+osd.4                        cephstorage-2                          running (20h)     6m ago  20h     538M    4096M  17.2.6-100.el9cp  1af7b794f353  7b8657193dbf  
+osd.5                        cephstorage-1                          running (20h)     6m ago  20h     377M    4096M  17.2.6-100.el9cp  1af7b794f353  a49049378ac5  
+osd.6                        cephstorage-0                          running (20h)     6m ago  20h     520M    4096M  17.2.6-100.el9cp  1af7b794f353  19faa14d063b  
+osd.7                        cephstorage-2                          running (20h)     6m ago  20h     419M    4096M  17.2.6-100.el9cp  1af7b794f353  8750192067fa  
+osd.8                        cephstorage-1                          running (20h)     6m ago  20h     419M    4096M  17.2.6-100.el9cp  1af7b794f353  3eaf803f2b95  
+osd.9                        cephstorage-0                          running (20h)     6m ago  20h     501M    4096M  17.2.6-100.el9cp  1af7b794f353  cb2f22bcd9c4  
+osd.10                       cephstorage-2                          running (20h)     6m ago  20h     506M    4096M  17.2.6-100.el9cp  1af7b794f353  d31c6e6cef50  
+osd.11                       cephstorage-1                          running (20h)     6m ago  20h     387M    4096M  17.2.6-100.el9cp  1af7b794f353  927d8f7c9d80  
+osd.12                       cephstorage-0                          running (20h)     6m ago  20h     486M    4096M  17.2.6-100.el9cp  1af7b794f353  8199b68b8422  
+osd.13                       cephstorage-2                          running (20h)     6m ago  20h     315M    4096M  17.2.6-100.el9cp  1af7b794f353  0b93cf0fd857  
+osd.14                       cephstorage-1                          running (20h)     6m ago  20h     442M    4096M  17.2.6-100.el9cp  1af7b794f353  d93d03e9928d  
+prometheus.controller-0      controller-0   172.17.3.68:9092        running (19h)     5m ago  19h     115M        -  2.32.1            eed6d68641e2  7a2f347b7d49  
+prometheus.controller-1      controller-1   172.17.3.136:9092       running (19h)     5m ago  19h     120M        -  2.32.1            eed6d68641e2  152ec93b2035  
+prometheus.controller-2      controller-2   172.17.3.96:9092        running (19h)     5m ago  19h     113M        -  2.32.1            eed6d68641e2  62ff04e99814  
+rgw.rgw.controller-0.xbducv  controller-0   172.17.3.68:8080        running (19h)     5m ago  19h     121M        -  17.2.6-100.el9cp  1af7b794f353  086c490398c6  
+rgw.rgw.controller-1.vimmbn  controller-1   172.17.3.136:8080       running (19h)     5m ago  19h     118M        -  17.2.6-100.el9cp  1af7b794f353  c246a41501db  
+rgw.rgw.controller-2.nmspiy  controller-2   172.17.3.96:8080        running (19h)     5m ago  19h     119M        -  17.2.6-100.el9cp  1af7b794f353  b14b4215bb19  
 
