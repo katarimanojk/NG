@@ -5,9 +5,18 @@ doc:
 
  policy guide:
 
- workflow guide:
+  https://docs.redhat.com/en/documentation/red_hat_software_certification/2024/html-single/red_hat_openstack_services_on_openshift_certification_policy_guide/index
 
- storage configuration: https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0-beta/html-single/configuring_storage/index
+ workflow guide:
+  
+ https://docs.redhat.com/en/documentation/red_hat_software_certification/2024/html-single/red_hat_openstack_services_on_openshift_certification_workflow_guide/index
+
+
+ storage configuration:
+
+ complete cinder : https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html-single/configuring_persistent_storage/index#assembly_cinder-configuring-the-block-storage-service_block-storage
+ cinder-volume https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html-single/configuring_persistent_storage/index#proc_cinder-configure-volume_block-storage
+
 
 vipin/javed : qe team
 abhishek - certops
@@ -20,6 +29,28 @@ notes:
   - cert code is just there to collect the artifacts and the ship
      - instead of rhcert tool, we run the tests and collect the data, we need their help to ship
 
+
+
+
+# install cert
+
+https://docs.redhat.com/en/documentation/red_hat_software_certification/2024/html-single/red_hat_openstack_services_on_openshift_certification_workflow_guide/index#setting-up-the-test-host_setting-up-the-test-environment
+
+
+  #subscription-manager register
+
+-- no pool attachment needed as we SCA
+
+  #sudo dnf install redhat-certification
+Installed:
+  redhat-certification-9.4-20240820.1.el9.noarch                                                                                                                                                                                              
+
+Complete!
+
+[zuul@controller-0 ~]$ rhos
+rhos-release              rhoso-cert-cleanup        rhoso-cert-init           rhoso-cert-logs           rhoso-cert-run            rhoso-cert-save           rhoso-cert-test-accounts
+
+
 # how rhoso-cert tool is built
 
 https://openstack-k8s-operators.github.io/test-operator/crds.html
@@ -29,12 +60,13 @@ Test-opertor has different ways to run tempest tests
 
 
 
+
+
 # rhoso-cert tool contains
 
-https://gitlab.cee.redhat.com/abishop/rhcert-test
 
-Read me file gives clear picture
-https://gitlab.cee.redhat.com/abishop/rhcert-test/-/blob/main/README.md?ref_type=heads
+Read me file gives clear picture of the latest rhoso-cert
+https://gitlab.cee.redhat.com/certification/rhoso-cert/-/blob/main/README.md?ref_type=heads
      
 -  bunch of scripts:    
   init -  test-operator CR apply and wait for operator to be in place
@@ -47,6 +79,20 @@ https://gitlab.cee.redhat.com/abishop/rhcert-test/-/blob/main/README.md?ref_type
    - tempestconfRun , edits tempest conf using overrides
    - Alan used workflows of tests to mimic how we group things in triploe
       - tempestRun: include list, as we have workflows
+
+
+## catalogsource
+
+catalogsource for all the operators can be seen using 
+#oc -n openstack-operators get subscription 
+and the subscription for test-operator will be added after the CR is applied
+
+as part of openstack-operators, there is a defualt catalog source 'openstack-operator-index'
+[zuul@shark20 rhoso-cert]$ oc -n openstack-operators get catalogsource 
+NAME                       DISPLAY   TYPE   PUBLISHER   AGE
+openstack-operator-index             grpc               2d6h
+
+to use the custom catalogsource duirng init, set export RHOSO_CERT_CATALOG_SOURCE="redhat-operators" (we saw in the dell case)
 
 
 # before run checks
@@ -86,6 +132,12 @@ rhcert-cinder-volumes-workflow-step-0-sz2fc               0/1     Error       0 
 [zuul@controller-0 rhcert-test]$ 
 
 
+[zuul@cert-rhosp-02 ~]$ oc -n openstack get tempest
+NAME               STATUS   MESSAGE
+rhoso-cert-debug   False    Deployment in progress
+
+
+
 every pod is a shell script that drives full process of
    - temptest init
    - discover tempest settings
@@ -95,6 +147,9 @@ every pod is a shell script that drives full process of
 # rhcert-debug
 
 run one test single test that fails
+
+[zuul@cert-rhosp-02 ~]$ oc -n openstack get pods | grep -i rhoso
+rhoso-cert-debug-debug-workflow-step-0-nv5fk                    0/1     Pending     0          56s
 
 
 
@@ -139,8 +194,7 @@ which has all the artifacts which inculde information about control plane
 
  - all the openstack related namespaces and pods in openshift cluster
  - all the cinder pods info
- - which has info like ... what container image c-vol is using and all c-vol logs
-
+ - which has info like ... what container image c-vol is using and all c-vol log
 
 
 [zuul@controller-0 registry-redhat-io-rhoso-podified-beta-openstack-must-gather-rhel9-sha256-68c5328e567a60b3ff0d470475d440a621aba228fd11a314fce971b49739dd61]$ pwd
@@ -157,6 +211,23 @@ cinder-volume-ceph-0-describe  logs
 [zuul@controller-0 logs]$ vi cinder-volume.log 
 [zuul@controller-0 logs]$ 
 
+
+
+## cleanup
+
+
+delete every job using for the cert suite 
+[zuul@controller-0 rhoso-cert]$ oc -n openstack get jobs -l instanceName=rhoso-cert-cinder
+NAME                                        COMPLETIONS   DURATION   AGE
+rhoso-cert-cinder-volumes-workflow-step-0   0/1           53s        53s
+[zuul@controller-0 rhoso-cert]$ oc -n openstack get jobs -l instanceName=rhoso-cert-cinder,workflowStep=0 
+NAME                                        COMPLETIONS   DURATION   AGE
+rhoso-cert-cinder-volumes-workflow-step-0   0/1           57s        57s
+[zuul@controller-0 rhoso-cert]$ oc -n openstack get jobs -l instanceName=rhoso-cert-cinder,workflowStep=0 -o name
+job.batch/rhoso-cert-cinder-volumes-workflow-step-0
+
+
+Note: rhoso-cert-cleanup will just remove tempest CR and the pods, test-operator will remain on the system.
 
 
 ## Large files in must-gather 
@@ -181,3 +252,60 @@ cinder.conf:
 
 
 oc edit openstackcontrolplane and update your backed in cindervolume section
+
+
+# misc
+
+
+## tempest concurrency
+
+Previously the test-operator was not configuring a default
+concurrency, which meant tempest would use every CPU core. Now the
+default concurrency is set to 4, but if necessary it can be
+overridden on the command line:
+  $ RHOSO_CERT_TEMPEST_CONCURRENCY=2 rhoso-cert-run
+
+
+## tempest-config-override
+
+any additional tempest settings that we need ,
+
+## tempest-deployer-input.conf
+bug (OSPRH-10092) that prevented the Partner from specifying a
+tempest-conf-override to set the test.vendor_name with a value
+containing quotes. Now, if a tempest-deployer-input.conf file is
+present, its contents is automatically merged into the
+deployerInput field of the test-operator CR.
+
+
+## test accounts
+
+ it's now possible to configure the testAccounts field
+from the contents of an accounts.yaml file. This will support
+certification of a specific Partner's manila driver, which requires
+a special set of test accounts (the Partnet will provide their own
+custom accounts.yaml file).
+
+For situations that require a "standard" set of test accounts, a
+new 'rhoso-cert-test-accounts' script will:
+- Run the "tempest account-generator" command to create the
+  test accounts.
+- Extract the accounts.yaml file that's generated by the command
+  so that it can be merged into the testAccounts field of the
+  test-operator CR.
+
+
+## support for neturon certificaiotn in rhoso-cet tool
+
+https://gitlab.cee.redhat.com/certification/rhoso-cert/-/merge_requests/10?commit_id=abd1e962955641682848b5679fbcbb184cf54942#005c34ed10eef1e22a79acf47fb3fcd9781d667d
+
+
+
+# misc
+
+ no certification for nova
+
+
+Why infinidat container have only z2
+
+ Partners are responsible for rebuilding their container images, but it's (unfortunately) not uncommon for them to "forget" or claim they didn't know we made another release. We generally just need to poke the partner and ask them to publish a new imag

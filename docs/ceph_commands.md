@@ -17,6 +17,41 @@ sudo cephadm shell ceph -W cephadm --watch-debug
 sudo cephadm shell ceph config set mgr mgr/cephadm/log_to_cluster_level debug
 
 
+refere ceph_logging_and_troubleshooting.md for detailed info
+
+# ceph osd debugging
+
+#ceph osd perf
+#ceph tell osd.* bench
+#ceph osd stat
+#ceph osd tree
+#rbd ls -l -p images
+#rbd ls -l -p volumes
+#ceph pg ls-by-pool images
+#ceph pg ls-by-pool volumes
+#ceph pg dump
+
+
+#ceph tell osd.* config set debug_osd 20/20
+
+find the pool num for images pool
+#ceph osd pool ls detail
+
+#find all the pgs in the pool images 
+ceph pg dump | grep <poolnum>
+
+#osds in the pg can be fetched using one of the commands
+ceph pg {poolnum}.{pg-id} query
+
+
+#ceph mgr module enable insights 
+#ceph insights
+ #The insights module collects and exposes system information to the Insights Core data analysis framework
+
+osdmaptool  to experment and understand mapping
+https://docs.ceph.com/en/reef/man/8/osdmaptool/
+
+
 ## podman
 
 sudo podman ps --format '{{ .Names }}G
@@ -122,6 +157,23 @@ watch ceph orch ps
 
 
 
+ceph osd map <pool name> <objectname>
+
+# this will return the PG name that associates with the pool and object.
+
+
+https://docs.ceph.com/en/reef/man/8/osdmaptool/
+
+To create a simple map with 16 devices:
+#osdmaptool --createsimple 16 osdmap --clobber
+
+To view the result:
+#osdmaptool --print osdmap
+
+To view the mappings of placement groups for pool 1:
+#osdmaptool osdmap --test-map-pgs-dump --pool 1
+
+
 
 
 ## cleanup
@@ -141,4 +193,50 @@ sudo vgs | awk 'NR>1{print $1}' | sudo xargs vgremove -y
 pvs
 sudo pvremove /dev/vd{b,c,d,e,f} # wipe the pvs                              
 —--
+
+
+
+# rados
+  directly interacting with librados instad of going via mon (ceph osd pool ls)
+
+
+[zuul@ceph-uni04delta-ipv6-0 ~]$ rados --cluster ceph   --conf /etc/ceph/ceph.conf   --keyring /etc/ceph/ceph.client.openstack.keyring  -n client.openstack lspools
+.mgr
+vms
+volumes
+backups
+images
+cephfs.cephfs.meta
+cephfs.cephfs.data
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+
+
+
+[zuul@ceph-uni04delta-ipv6-0 ~]$ sudo cephadm shell -- rados lspools
+Inferring fsid 7f8c0b24-7afd-53eb-a443-f5b7da31bb60
+Inferring config /var/lib/ceph/7f8c0b24-7afd-53eb-a443-f5b7da31bb60/mon.ceph-uni04delta-ipv6-0/config
+Using ceph image with id '90d03ee72227' and tag '7' created on 2025-06-12 22:39:04 +0000 UTC
+registry-proxy.engineering.redhat.com/rh-osbs/rhceph@sha256:d44a96fa8a29529caf7632f2be199f1a2a8a13f7114a6830bf5fbf6b3b4647b7
+.mgr
+vms
+volumes
+backups
+images
+cephfs.cephfs.meta
+cephfs.cephfs.data
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+
+
+[zuul@ceph-uni04delta-ipv6-0 ~]$ rados --cluster ceph   --conf /etc/ceph/ceph.conf   --keyring /etc/ceph/ceph.client.manila.keyring   -n client.manila  -p volumes ls
+rados_nobjects_list_next2: Operation not permitted
+# manila keyring doesn't have premission 
+
+[zuul@ceph-uni04delta-ipv6-0 ~]$ rados --cluster ceph   --conf /etc/ceph/ceph.conf   --keyring /etc/ceph/ceph.client.openstack.keyring  -n client.openstack -p volumes ls
+[zuul@ceph-uni04delta-ipv6-0 ~]$ 
 

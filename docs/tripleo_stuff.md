@@ -1,3 +1,7 @@
+# tripleo deployment/development guide and workflow:
+- https://spaces.redhat.com/pages/viewpage.action?pageId=310402771
+
+
 https://docs.redhat.com/en/documentation/red_hat_openstack_platform/17.0/html/director_installation_and_usage/assembly_configuring-the-overcloud-with-ansible#assembly_configuring-the-overcloud-with-ansible
 
 

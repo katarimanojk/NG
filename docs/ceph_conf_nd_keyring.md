@@ -4,6 +4,16 @@ https://code.engineering.redhat.com/gerrit/c/openstack-tripleo-validations/+/452
 
 
 
+keys in cifmw:
+
+cifmw_cepahdm_keys are passed : https://github.com/openstack-k8s-operators/ci-framework/blob/main/playbooks/ceph.yml#L329
+
+keys are created here on the target nodes : https://github.com/openstack-k8s-operators/ci-framework/blob/main/playbooks/ceph.yml#L442   
+ https://github.com/openstack-k8s-operators/ci-framework/blob/main/roles/cifmw_cephadm/tasks/keys.yml#L17
+
+ceph client is again rendered in /tmp on localhost (hypervisor) here: https://github.com/openstack-k8s-operators/ci-framework/blob/main/playbooks/ceph.yml#L482
+
+
 
 If a customer is doing an upgrade from 16 to 17 and following our docs, then they will pass this override CephConfigPath: /etc/ceph.
 

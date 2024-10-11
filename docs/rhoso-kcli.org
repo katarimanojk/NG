@@ -1,0 +1,331 @@
+NOTE: This is an org-mode file:
+- It's just ascii text, but see https://orgmode.org/
+- Major sections begin with "*" and minor subsections with "**"
+
+* Deploy OCP 4.16 on a hypervisor using [[https://kcli.readthedocs.io/en/latest/][kcli]]
+** Prepare a non-root user
+RHOSO_USER=<Your choice>
+useradd ${RHOSO_USER}
+passwd ${RHOSO_USER}
+echo "${RHOSO_USER} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${RHOSO_USER}
+chmod 0440 /etc/sudoers.d/${RHOSO_USER}
+su - ${RHOSO_USER}
+
+# Create an SSH key
+ssh-keygen -f ${HOME}/.ssh/id_rsa -N ""
+
+** Prepare the hypervisor (using non-root account)
+sudo dnf -y install libvirt libvirt-daemon-driver-qemu qemu-kvm
+# Other packages required by install_yamls
+sudo dnf -y install ansible-core git jq podman
+
+# Ensure /var/lib/libvirt has lots of space (>500GB), or move it to /home
+sudo mv /var/lib/libvirt /home
+sudo mkdir /var/lib/libvirt
+echo "/home/libvirt /var/lib/libvirt none bind 0 0" | sudo tee -a /etc/fstab
+sudo mount -a
+sudo systemctl daemon-reload
+
+# Do this even if libvirt/kvm is already installed
+sudo usermod -aG qemu,libvirt $(id -un)
+sudo setfacl -m u:$(id -un):rwx /var/lib/libvirt/images
+
+# Start libvirtd
+sudo systemctl enable --now libvirtd
+
+# Install kcli
+sudo dnf -y copr enable karmab/kcli && sudo dnf -y install kcli
+
+mkdir -p $HOME/bin
+(cd $HOME/bin && kcli download oc -P version=stable -P tag='4.16')
+
+# Create the 'default' libvirt pool
+sudo kcli create pool -p /var/lib/libvirt/images default
+
+** Prepare the virsh networks and deploy OCP
+# Create the 'ocp' network
+kcli create network -c 192.168.131.0/24 ocpnet
+
+# Assign well known IPs to 'default' network. kcli only supports assigning
+# a default address in the vmrules on the first network.
+sudo virsh net-update default add-last ip-dhcp-host '<host mac="aa:aa:aa:aa:bb:03" ip="192.168.122.10"/>' --live --config --parent-index 0
+sudo virsh net-update default add-last ip-dhcp-host '<host mac="aa:aa:aa:aa:bb:05" ip="192.168.122.11"/>' --live --config --parent-index 0
+sudo virsh net-update default add-last ip-dhcp-host '<host mac="aa:aa:aa:aa:bb:07" ip="192.168.122.12"/>' --live --config --parent-index 0
+
+# Install/copy these files into a working directory:
+# - rhoso-cluster.yml
+# - pull-secret (your pull-secret per the RHOSO-18 docs)
+
+# Create the 'rhoso' OCP cluster
+time kcli create cluster openshift --paramfile rhoso-cluster.yml rhoso
+# Later, you can "kcli delete cluster rhoso"
+
+# Set this to access the cluster
+export KUBECONFIG=$HOME/.kcli/clusters/rhoso/auth/kubeconfig
+
+# See https://access.redhat.com/solutions/6962558
+oc patch network.operator cluster -p \
+  '{"spec": {"defaultNetwork":{"ovnKubernetesConfig":{"gatewayConfig": {"ipForwarding": "Global", "routingViaHost": true}}}}}' --type=merge
+
+* Deploy RHOSO the control plane using install_yamls
+git clone https://github.com/openstack-k8s-operators/install_yamls
+
+cd install_yamls
+make -C devsetup download_tools
+
+# Install machineConfigs from cinder-operater config samples
+CINDER_MC_BASE=https://raw.githubusercontent.com/openstack-k8s-operators/cinder-operator/main/config/samples/backends/bases
+oc apply \
+  -f ${CINDER_MC_BASE}/iscsid/iscsid.yaml \
+  -f ${CINDER_MC_BASE}/multipathd/multipathd.yaml \
+  -f ${CINDER_MC_BASE}/nvmeof/nvme-fabrics.yaml
+
+# Cinder LVM backend support is optional
+oc label node \
+  $(oc get nodes --field-selector spec.unschedulable=false -l node-role.kubernetes.io/worker -o jsonpath="{.items[0].metadata.name}") \
+  openstack.org/cinder-lvm=
+oc apply -f ${CINDER_MC_BASE}/lvm/lvm.yaml
+
+# Deploy the operators from Red Hat's redhat-operator-index
+CRC_POOL=/var/lib/libvirt/images \
+NNCP_INTERFACE=ens4 \
+OPENSTACK_IMG=registry.redhat.io/redhat/redhat-operator-index:v4.16 \
+make openstack
+
+# Immediately remove the "channel: alpha" from the subscription. install_yamls
+# adds it, but that is not a valid channel for RHOSO-18.
+oc patch subscriptions openstack-operator --type json \
+  --patch '[{ "op": "remove", "path": "/spec/channel" }]'
+
+# A handy helper alias
+alias oco="oc -n openstack-operators"
+
+# This creates a separate set of PVs on each OCP node, so given default
+# PV_NUM=12 you get a total of 36 PVs.
+make crc_storage
+
+# Deploy the control plane using your customized OPENSTACK_CR
+OPENSTACK_CR=~/openstack_control_plane.yaml make openstack_deploy
+
+* Deploy RHOSO the data plane
+
+# Use https://access.redhat.com/downloads/content/479/ver=/rhel---9/9.4/x86_64/product-software
+# to download the "Red Hat Enterprise Linux 9.4 KVM Guest Image" and store it
+# in $HOME/Downloads
+
+# Create the EDPM node(s), overriding EDPM_IMAGE_URL to use the RHEL 9.4 image
+CRC_POOL=/var/lib/libvirt/images \
+EDPM_IMAGE_URL=file://${HOME}/Downloads/rhel-9.4-x86_64-kvm.qcow2 \
+EDPM_TOTAL_NODES=2 \
+make -C devsetup edpm_compute
+
+** Create the required secrets per [[https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html/deploying_red_hat_openstack_services_on_openshift/assembly_creating-the-data-plane#proc_creating-the-data-plane-secrets_dataplane][Creating the data plane secrets]]
+# Steps 1 and 2: Create the dataplane-ansible-ssh-private-key-secret
+# This is done automatically when install_yamls creates the node(s).
+
+# Steps 3 and 4: Create the nova-migration-ssh-key
+ssh-keygen -f ./nova-migration-ssh-key -t ecdsa-sha2-nistp521 -N ''
+
+oc create secret generic nova-migration-ssh-key \
+--save-config \
+--from-file=ssh-privatekey=nova-migration-ssh-key \
+--from-file=ssh-publickey=nova-migration-ssh-key.pub \
+-n openstack \
+-o yaml | oc apply -f -
+
+# Steps 5 and 6: Create the subscription-manager secret
+SM_USERNAME=<Your subscription-manager registration username>
+SM_PASSWORD=<Your subscription-manager registration password>
+
+cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: subscription-manager
+data:
+  username: $(echo -n ${SM_USERNAME} | base64)
+  password: $(echo -n ${SM_PASSWORD} | base64)
+EOF
+
+# Steps 7 and 8: Create the redhat-registry secret
+# This can be skipped because it's only needed to run "podman login" in
+# the edpm_bootstrap_command, and that is superseded by using the
+# edpm_container_registry_logins ansible variable.
+
+# Steps 9 and 10: Create the libvirt-secret
+LIBVIRT_SECRET=<Choose your libvirt secret>
+
+cat <<EOF | oc apply -f -
+apiVersion: v1
+data:
+  LibvirtPassword: $(echo -n ${LIBVIRT_SECRET} | base64)
+kind: Secret
+metadata:
+  name: libvirt-secret
+  namespace: openstack
+type: Opaque
+EOF
+
+** Create the OpenStackDataPlaneNodeSet CR per [[https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html/deploying_red_hat_openstack_services_on_openshift/assembly_creating-the-data-plane#proc_creating-a-set-of-data-plane-nodes-with-preprovisioned-nodes_dataplane][Creating a set of data plane nodes with pre-provisioned nodes]]
+
+# The OpenStackDataPlaneNodeSet CR configures edpm_container_registry_logins
+# with the Red Hat registry credentials.
+RHREG_USERNAME=<Your Red Hat registry username>
+RHREG_PASSWORD=<Your Red Hat registry password>
+
+# Create the openstack_preprovisioned_node_set.yaml file
+cat <<EOF > openstack_preprovisioned_node_set.yaml
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneNodeSet
+metadata:
+  name: openstack-data-plane
+  namespace: openstack
+spec:
+  env: 
+    - name: ANSIBLE_FORCE_COLOR
+      value: "True"
+  services:
+  - bootstrap
+  - configure-network
+  - validate-network
+  - install-os
+  - configure-os
+  - ssh-known-hosts
+  - run-os
+  - reboot-os
+  - install-certs
+  - ovn
+  - neutron-metadata
+  - libvirt
+  - nova
+  - telemetry
+  networkAttachments:
+    - ctlplane
+  preProvisioned: true 
+  nodeTemplate: 
+    ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret 
+    managementNetwork: ctlplane
+    ansible:
+      ansibleUser: cloud-admin 
+      ansiblePort: 22
+      ansibleVarsFrom:
+        - prefix: subscription_manager_
+          secretRef:
+            name: subscription-manager
+        - secretRef:
+            name: registry-logins
+      ansibleVars: 
+        edpm_bootstrap_command: |
+          subscription-manager register --username {{ subscription_manager_username }} --password {{ subscription_manager_password }}
+          subscription-manager release --set=9.4
+          subscription-manager repos --disable=*
+          subscription-manager repos --enable=rhel-9-for-x86_64-baseos-eus-rpms --enable=rhel-9-for-x86_64-appstream-eus-rpms --enable=rhel-9-for-x86_64-highavailability-eus-rpms --enable=fast-datapath-for-rhel-9-x86_64-rpms --enable=rhoso-18.0-for-rhel-9-x86_64-rpms --enable=rhceph-7-tools-for-rhel-9-x86_64-rpms
+        edpm_bootstrap_release_version_package: []
+        edpm_container_registry_logins:
+          registry.redhat.io:
+            ${RHREG_USERNAME}: ${RHREG_PASSWORD}
+        neutron_physical_bridge_name: br-ex
+        neutron_public_interface_name: eth0
+        edpm_network_config_template: |
+          ---
+          {% set mtu_list = [ctlplane_mtu] %}
+          {% for network in nodeset_networks %}
+          {{ mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) }}
+          {%- endfor %}
+          {% set min_viable_mtu = mtu_list | max %}
+          network_config:
+          - type: ovs_bridge
+            name: {{ neutron_physical_bridge_name }}
+            mtu: {{ min_viable_mtu }}
+            use_dhcp: false
+            dns_servers: {{ ctlplane_dns_nameservers }}
+            domain: {{ dns_search_domains }}
+            addresses:
+            - ip_netmask: {{ ctlplane_ip }}/{{ ctlplane_cidr }}
+            routes: {{ ctlplane_host_routes }}
+            members:
+            - type: interface
+              name: nic1
+              mtu: {{ min_viable_mtu }}
+              # force the MAC address of the bridge to this interface
+              primary: true
+          {% for network in nodeset_networks %}
+            - type: vlan
+              mtu: {{ lookup('vars', networks_lower[network] ~ '_mtu') }}
+              vlan_id: {{ lookup('vars', networks_lower[network] ~ '_vlan_id') }}
+              addresses:
+              - ip_netmask:
+                  {{ lookup('vars', networks_lower[network] ~ '_ip') }}/{{ lookup('vars', networks_lower[network] ~ '_cidr') }}
+              routes: {{ lookup('vars', networks_lower[network] ~ '_host_routes') }}
+          {% endfor %}
+  nodes:
+    edpm-compute-0: 
+      hostName: edpm-compute-0
+      ansible:
+        ansibleHost: 192.168.122.100
+        ansibleUser: cloud-admin
+        ansibleVars:
+          fqdn_internal_api: edpm-compute-0.example.com
+      networks:
+      - name: ctlplane
+        subnetName: subnet1
+        defaultRoute: true
+        fixedIP: 192.168.122.100
+      - name: internalapi
+        subnetName: subnet1
+        fixedIP: 172.17.0.100
+      - name: storage
+        subnetName: subnet1
+        fixedIP: 172.18.0.100
+      - name: tenant
+        subnetName: subnet1
+        fixedIP: 172.19.0.100
+    edpm-compute-1:
+      hostName: edpm-compute-1
+      ansible:
+        ansibleHost: 192.168.122.101
+        ansibleUser: cloud-admin
+        ansibleVars:
+          fqdn_internal_api: edpm-compute-1.example.com
+      networks:
+      - name: ctlplane
+        subnetName: subnet1
+        defaultRoute: true
+        fixedIP: 192.168.122.101
+      - name: internalapi
+        subnetName: subnet1
+        fixedIP: 172.17.0.101
+      - name: storage
+        subnetName: subnet1
+        fixedIP: 172.18.0.101
+      - name: tenant
+        subnetName: subnet1
+        fixedIP: 172.19.0.101
+EOF
+
+# Save the OpenStackDataPlaneNodeSet CR
+oc create --save-config -f openstack_preprovisioned_node_set.yaml -n openstack
+
+** Create the OpenStackDataPlaneDeployment CR per [[https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html/deploying_red_hat_openstack_services_on_openshift/assembly_creating-the-data-plane#proc_deploying-the-data-plane_dataplane][Deploying the data plane]]
+
+# Create the openstack_data_plane_deploy.yaml file
+cat <<EOF > openstack_data_plane_deploy.yaml
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneDeployment
+metadata:
+  name: openstack-data-plane-deploy
+  namespace: openstack
+spec:
+  nodeSets:
+    - openstack-data-plane
+EOF
+
+# Deploy the data plane
+oc create -f openstack_data_plane_deploy.yaml -n openstack
+
+# Use commands like this to monitor the deployment progress
+oc get pods -l app=openstackansibleee -w
+oc get openstackdataplanedeployment
+
+# Excecute this command after the deployment is complete
+oc rsh nova-cell0-conductor-0 nova-manage cell_v2 discover_hosts --verbose

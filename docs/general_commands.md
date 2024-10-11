@@ -2,6 +2,8 @@
 
 pre-commit run --all-files
 
+yamllint tests/roles/ceph_migrate/tasks/configure_object.yaml
+
 podman run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z -v /home/ceph-admin/specs/grafana:/home/ceph-admin/specs/grafana:z --entrypoint=ceph quay.ceph.io/ceph-ci/ceph:reef -n client.admin -k /etc/ceph/ceph.client.admin.keyring --cluster ceph orch apply --in-file /home/ceph-admin/specs/grafana
 
 
