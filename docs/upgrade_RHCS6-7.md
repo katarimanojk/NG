@@ -11,6 +11,9 @@ main steps
  6. only nfs-ganesha continer should be upgraded separetly by updating systemd file and pcs restart.
 
 
+/fp notes: https://docs.google.com/document/d/14R9bVuz-jpdkVqLACAyXYQozHZJ3vsS4igntfv59Ht8/edit
+
+
 ***NOTE: orch upgrade 5-6 or 6-7 ,
 - pulls image from undercloud to controller node for mon, mgr services , and then 
 - pulls it to ceph nodes for crash, osd
@@ -38,6 +41,11 @@ main steps
           become: true
 (undercloud) [stack@undercloud-0 ~]$ 
 
+
+if you obsever failures in installing rhos-release package, you can use below commands on all there controllers
+
+sudo curl -k -o /tmp/rhos-release.rpm https://download.eng.brq.redhat.com/rcm-guest/puddles/OpenStack/rhos-release/rhos-release-latest.noarch.rpm
+sudo dnf install -y /tmp/rhos-release.rpm
 
 
 (undercloud) [stack@undercloud-0 ~]$ ansible-playbook -vv -i ~/overcloud-deploy/overcloud/tripleo-ansible-inventory.yaml ~/enable_rhcs7.yml --limit ControllerStorageNfs
@@ -71,6 +79,14 @@ controller-0               : ok=3    changed=2    unreachable=0    failed=0    s
 controller-1               : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 controller-2               : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
+
+
+
+[tripleo-admin@controller-2 ~]$ rpm -qa | grep cephadm
+cephadm-18.2.0-192.el9cp.noarch
+[tripleo-admin@controller-2 ~]$ sudo dnf info cephadm | grep -i version
+Version      : 18.2.0
+[tripleo-admin@controller-2 ~]$ 
 
 
 

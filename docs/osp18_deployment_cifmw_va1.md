@@ -185,15 +185,24 @@ fatal: [hypervisor-1 -> controller-0(192.168.111.23)]: FAILED! => changed=true
 
 see controller-0:~/ansible-deploy-architecture.log to see why it stopped.
 
+more tips on stopping:
+https://ci-framework.pages.redhat.com/docs/main/ci-framework/cookbook.html#stop-automated-deployment-in-a-specific-stage
+
 
 
 run ceph playbook
 https://ci-framework.pages.redhat.com/docs/stable/ci-framework/05_deploy_va.html#ceph
 
+
+inventory:
+[zuul@controller-0 ci-framework]$ cp ~/reproducer-inventory/compute-group.yml inventory.yml
+
 export ANSIBLE_REMOTE_USER=zuul
 export ANSIBLE_SSH_PRIVATE_KEY=~/.ssh/id_cifw
 export ANSIBLE_HOST_KEY_CHECKING=False
 
+
+ANSIBLE_GATHERING=implicit ansible-playbook playbooks/ceph.yml -e @/tmp/ceph_overrides.yml
 
 
 # #step4

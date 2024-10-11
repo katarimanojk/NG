@@ -1,14 +1,319 @@
 
+cifmw_external_dns role implemented by john (https://github.com/openstack-k8s-operators/ci-framework/pull/1865/files) can be used
+  - creates dns , dns forwarding using cordnds
+  - creates certficates with OpenStack public root 
 
-oc get cm openstack-config -o json | jq -r '.data["clouds.yaml"]'
 
 
 
-oc get catalogsources -A
 
-# catalogsources are the bundles served to operators in the namespace for any queries
+[zuul@shark20 ci-framework]$ cat playbooks/configure_rgw_with_tls.yaml 
+- name: Configure rgw with tls
+  tags: cephadm
+  hosts: "{{ groups['ComputeHCI'][0] }}"
+    #hosts: "{{ hostvars[inventory_hostname].groups.ComputeHCI[0] }}"
+    #hosts: "{{ groups['overcloud'][0] | default([]) }}"
+  gather_facts: false
+  tasks:
+    - name: print target_nodes
+      debug:
+        msg: "{{ target_nodes }}"
+          #msg: "{{ hostvars[inventory_hostname].groups.ComputeHCI[0] }}"
+    - name: Deploy RGW
+      when: cifmw_ceph_daemons_layout.rgw_enabled | default(true) | bool
+      ansible.builtin.import_role:
+        name: cifmw_cephadm
+        tasks_from: rgw
+      vars:
+        cifmw_cephadm_rgw_vip: "{{ ceph_storage_net_prefix }}.100"
+        cifmw_ceph_target: "{{ target_nodes }}"
+        _hosts: "{{ target_nodes }}"
+        cifmw_cephadm_certificate: "/etc/pki/tls/example.com.crt"
+        cifmw_cephadm_key: "/etc/pki/tls/example.com.key"
+        cifmw_openshift_kubeconfig: "~/.kube/config"
+          #ansible_user_dir: "{{ lookup('env', 'HOME') }}"
+        cifmw_cephadm_rgw_network: "{{ ceph_storage_net_prefix }}.0/24"
+        cidr: "24"
+        cifmw_cephadm_fsid: "c9c94b45-3b77-5a01-b4a4-da38108f0d73"
+        cifmw_cephadm_first_mon_ip: "{{ ceph_storage_net_prefix }}.106"
+[zuul@shark20 ci-framework]
 
-oc get packagemanifests :
 
-# inspect the content of a index/catalog image
-opm index export --index="quay.io/...." -c podman 
+
+[zuul@shark20 ci-framework]$ ansible-playbook -v -i ~/tripleo-ansible-inventory.yaml -e @/home/zuul/rdo-jobs/playbooks/data_plane_adoption/ceph_overrides.yaml playbooks/configure_rgw_with_tls.yaml
+
+
+additional changes:
+
+in ~/tripleo-ansible-inventory.yaml
+
+ vars:
+    ansible_ssh_private_key_file: "/home/zuul/.ssh/cifmw_reproducer_key"
+
+
+rgw spec:
+
+
+
+
+before:
+---------
+
+sudo cephadm shell -- ceph orch ls --export rgw
+
+
+[zuul@osp-compute-an2r7t2a-0 ~]$ cat rgw.spec 
+service_type: rgw
+service_id: rgw
+service_name: rgw.rgw
+placement:
+  label: rgw
+networks:
+- 172.18.0.0/24
+spec:
+  rgw_frontend_port: 8090
+  rgw_realm: default
+  rgw_zone: default
+[zuul@osp-compute-an2r7t2a-0 ~]$
+
+
+
+
+
+after:
+-------
+
+sudo cephadm shell -- ceph orch ls --export rgw
+
+service_type: rgw
+service_id: rgw
+service_name: rgw.rgw
+placement:
+  hosts:
+  - osp-compute-an2r7t2a-0.example.com
+  - osp-compute-an2r7t2a-1.example.com
+  - osp-compute-an2r7t2a-2.example.com
+networks:
+- 172.18.0.0/24
+spec:
+  rgw_frontend_port: 8082
+  rgw_frontend_ssl_certificate: '-----BEGIN CERTIFICATE-----
+    MIIDpTCCAg2gAwIBAgIRAPynUTCwLrWSkb1dQ38zsEcwDQYJKoZIhvcNAQELBQAw
+    GDEWMBQGA1UEAxMNcm9vdGNhLXB1YmxpYzAeFw0yNTAzMjUxNDUyMTFaFw0zMDAz
+    MjQxNDUyMTFaMAAwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCgMzak
+    4vnkNYplMCqh358osQ1Voxfl6yT4/Ausu6ruMNDGMSKqxrVN6tBUoG6D/Ne0EgrD
+    6U/xf53o3egCPfehAPLXfM9V0C+lU8P1bJt9lhKe+wOjSXUQ3xUe8iVVjtYHK5qN
+    qWtA948YUkxcA7HQXWlYief/agCJ+Hj4+TKrXvEBHG+6hZRNtWTqJ2yqmgrGq8S7
+    Fb6cuiOjXkGlWoOUY3KXJYY6VCke5CSMMMiKIcOXFVPcRnSxt9yLlkjfphCG8fDw
+    vYyhBwq1FJr/i7EclIDB5jBCuUtn2W+V9FZwuMOiKQMFqS2fqwU5IgSEaA7fC6AK
+    8uxIWGKh6xIc4IlpAgMBAAGjgYEwfzAOBgNVHQ8BAf8EBAMCBaAwDAYDVR0TAQH/
+    BAIwADAfBgNVHSMEGDAWgBSjG/ptuyR7GEvHOIAiMwwA9BdwQDA+BgNVHREBAf8E
+    NDAyghdyZ3ctaW50ZXJuYWwuY2VwaC5sb2NhbIIXcmd3LWV4dGVybmFsLmNlcGgu
+    bG9jYWwwDQYJKoZIhvcNAQELBQADggGBADX1AdMsloSLajHTbkU3vQlgJvEBzGYD
+    dGbKBoc10QsxUXYMxRZbLvyNI3+mW3QS2HOeIXKwxgJanEPp9NQzuLmE/dlAOcyT
+    TZHT8bdKv+WgH1o75XgBhkXJ3aq68iIcS5fG01uDYc7fvGl0xUhTnWSt5X/oGj8i
+    y8fctRwPZS+eSgXvPnIkmctP4nva9L+JxRs5RrGrFG9mK5WX0PxBTHnVko3JXzIk
+    jeDuXO0d+JsBBNFbu5SPkYTb2t9Zh3C7mWgeo+Y9wcti7eurKrp73m1OnNzJxcvF
+    JIA3g6u/Zt84lpslfpbz1Ho2aRZe0nKXgQT6+AD8oxHYJbtdTy4yk2ln8mjE3qvn
+    JcPg1QwnHwzr42WqvcKUMv2XVVno69dkOQaOMxPunBZYGyVOgDTd24HbTva6Ap1m
+    d76l44csqIcDjTwGNpzBWOSb4MPFrN+8kpwigKTVVwoF2bBFcs0b03eRnYDSe0Ir
+    sTUW9ssDrYV5Kes6pt0vZDgDkGn+yeyHwg==
+    -----END CERTIFICATE-----
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEowIBAAKCAQEAoDM2pOL55DWKZTAqod+fKLENVaMX5esk+PwLrLuq7jDQxjEi
+    qsa1TerQVKBug/zXtBIKw+lP8X+d6N3oAj33oQDy13zPVdAvpVPD9WybfZYSnvsD
+    o0l1EN8VHvIlVY7WByuajalrQPePGFJMXAOx0F1pWInn/2oAifh4+Pkyq17xARxv
+    uoWUTbVk6idsqpoKxqvEuxW+nLojo15BpVqDlGNylyWGOlQpHuQkjDDIiiHDlxVT
+    3EZ0sbfci5ZI36YQhvHw8L2MoQcKtRSa/4uxHJSAweYwQrlLZ9lvlfRWcLjDoikD
+    Baktn6sFOSIEhGgO3wugCvLsSFhioesSHOCJaQIDAQABAoIBAQCDd+P1Rwwam1G7
+    Ht8tvs3n3/z4dYLMPcA20Oln1Q8+sDL1Iye3DKGHkxdrC8oGaT4/2bqZ8mOX5coa
+    a9nV1TLeH2ArNZMVcmdXfznGtF2an8kiTQ88NrFqqhi0L7Yx06mTctZAQXPyefcl
+    14wwyxtmyvIEJhCNTFmq4I2ujRtnBJN74J/sR7v7GGjw0ETR8UToo04GfKEAKRdK
+    V0FuYiqKs0Q5bMwm4TM/lZA8SmtjK2nUVVciqDB+sZlQk4iWAMPhG/PVf4+S2gly
+    LQra7LweVw0ylIpYgvcVxSF4/abRffW6fZRqsGRhJu33aw87SzTstdJ8faGWWEa1
+    V8DQ0/kxAoGBAMGUrUHUdGHRUp/PSx8HRqibI1U+1gPKk3z9bFGXf19cYLQK2KD0
+    u0GFnuzX1cM6HWK8hZH2L7gJFBLdy/yFABoZxbjwUH8IKHWUwmxBa8cAvgh14liA
+    LGrrKd0BZOgamAMRX1GUVCRvEoDLPB8iKl5Wvuqaj66OE8iHvg/MsbFlAoGBANPb
+    F1itFDMO0Qlw+GhDgR8rq4M3S1xOIX5vTwcM/xQu9VdFF7cxcARNPyUVqI5HnLQi
+    NM7yEpcjI6qYmZqh4MfmOzP94KkTh0LmBRPMFloJZHknzGU8voFVcv9RpTyjUd0N
+    HnFqm327jJQ4i2cwPcFTXJFURAtpQXNffdhaKlm1AoGAfktGog0/BNZxJmwyoYK4
+    uaXFboc5T23pvYEFG1JQumFlgfEVliU0yjGoFvNVtjIDG/jM2Aaa6WGa5BgqToxj
+    HaQ02EyI5+flpZixI7mm3EWCtbhbPMwaroLQZCzVrYw0IsRBwNKZ9s80biyqA9Hh
+    fHzxv9Oo7AQrqgfNmzc7svUCgYBzhiAX+eFu6iBw7op2iIDrl2uiVM+iWPSItne4
+    l4ys2+JrIUEKY0n6/oh1V3cfhstbqt9zDau3gLDdQPNZz/X7637THhiY+g4jG70f
+    C4YQuNhx/JLHjbUwX4Ei2smo5EIqsRGttP1vNYs19BOIRFUYi7WJhhLIyi+nkyXT
+    iW9YlQKBgDUHQ7t1JlXNFUT1p1+HjQg1ZooNGzG7gUmYsk0GOB5Rz5mHn4AkIdJL
+    jmATij2nL8kRBhjjEM24Qoe5tOY4eey7H3E7ylEGlOa/cWvXP2nr2twiHcYDSDa7
+    yAyxqI3QR9Ul5OkN/ENGwlt9zKyR/zrMya7CS5er2lF1ZWdPxTuc
+    -----END RSA PRIVATE KEY-----
+    '
+  rgw_realm: default
+  rgw_zone: default
+  ssl: true
+
+
+
+# after configuring swift endpoint
+
+
+
+
+    - name: Configure ceph object store to use external ceph object gateway
+      ansible.builtin.import_role:
+        name: cifmw_cephadm
+        tasks_from: configure_object.yml
+      vars:
+        cifmw_cephadm_rgw_vip: "{{ ceph_storage_net_prefix }}.100"
+        cifmw_openshift_kubeconfig: "~/.kube/config"
+
+
+changes to roles/cifmw_cephadm/tasks/configure_object.yml
+
+
+- comment kubeconfig env lines
+
+
+- comment few commands
+ #- name: Create swift service, user and roles
+
+based on what is already available using the commands below
+
+
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack service list | grep swift
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack role list | grep swift
+| bd20a39aa9f5434489367cca4549eba9 | swiftoperator             |
+\
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack role list | grep -i resel
+| 8db43439f80548ce80fdbfe33e2841c6 | ResellerAdmin             |
+\
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack user list | grep swift
+| 009d266762794689a8c93c3e690e43d2 | swift                   |
+[zuul@shark20 ci-framework]$ 
+
+
+
+
+
+
+
+[zuul@shark19 ~]$ oc get cert ceph-local-cert -o yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  creationTimestamp: "2025-04-03T11:30:16Z"
+  generation: 1
+  name: ceph-local-cert
+  namespace: openstack
+  resourceVersion: "167606"
+  uid: 66447340-6e25-411b-b636-c1e640140197
+spec:
+  dnsNames:
+  - rgw-internal.ceph.local
+  - rgw-external.ceph.local
+  duration: 43800h0m0s
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: rootca-public
+  secretName: ceph-local-cert
+status:
+  conditions:
+  - lastTransitionTime: "2025-04-03T11:30:16Z"
+    message: Certificate is up to date and has not expired
+    observedGeneration: 1
+    reason: Ready
+    status: "True"
+    type: Ready
+  notAfter: "2030-04-02T11:30:16Z"
+  notBefore: "2025-04-03T11:30:16Z"
+  renewalTime: "2028-08-02T03:30:16Z"
+  revision: 1
+
+
+
+
+[zuul@shark19 tests]$  oc get dnsdata/ceph-local-dns -o yaml 
+apiVersion: network.openstack.org/v1beta1
+kind: DNSData
+metadata:
+  creationTimestamp: "2025-04-03T11:30:09Z"
+  finalizers:
+  - openstack.org/dnsdata
+  generation: 1
+  labels:
+    component: ceph-storage
+    service: ceph
+  name: ceph-local-dns
+  namespace: openstack
+  resourceVersion: "167426"
+  uid: 8093c49b-4b3c-4801-8c46-ecd0221f50d8
+spec:
+  dnsDataLabelSelectorValue: dnsdata
+  hosts:
+  - hostnames:
+    - rgw-internal.ceph.local
+    ip: 172.18.0.100
+  - hostnames:
+    - rgw-external.ceph.local
+    ip: 172.18.0.100
+
+
+
+
+
+
+
+
+## failing here as rgw is not in good shape with certs
+
+
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack endpoint list | grep swift
+| a7aa6011bac9459c82d030446273b87f | regionOne | swift        | object-store   | True    | internal  | https://172.18.0.100:8080/swift/v1/AUTH_%(tenant_id)s                    |
+| c33bcf0c8e834534bde439a1e0cb0f23 | regionOne | swift        | object-store   | True    | public    | https://172.18.0.100:8080/swift/v1/AUTH_%(tenant_id)s                    |
+[zuul@shark20 ci-framework]$ oc rsh openstackclient openstack container list
+SSL exception connecting to https://172.18.0.100:8080/swift/v1/AUTH_78023bc97f0e4a1ba48c1e05d0134b1d: HTTPSConnectionPool(host='172.18.0.100', port=8080): Max retries exceeded with url: /swift/v1/AUTH_78023bc97f0e4a1ba48c1e05d0134b1d?format=json (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1147)')))
+command terminated with exit code 
+
+
+
+
+
+Np-compute-pzojvra0-0 ~]$ curl -k https://172.18.0.106:8082                                                                                                                                                                            
+curl: (7) Failed to connect to 172.18.0.106 port 8082: Connection refused
+
+something wrong with rgw deamon and ingress response below is expected
+
+[zuul@osp-compute-pzojvra0-0 ~]$ curl -k https://172.18.0.100:8080                                                      
+<html><body><h1>503 Service Unavailable</h1>                                                                                                                                                                                                  
+No server is available to handle this request.                                                                         
+</body></html>                                                                                                                                                                                                                                
+[zuul@osp-compute-pzojvra0-0 ~]te: 'openstack catalog list ' gives detailed view of endpoint list
+
+
+
+
+[root@osp-compute-dgskzzfi-0 4b03232f-ef84-52b5-b133-840da55c83ac]# podman ps | grep rgw
+f8c3b3e7ad84  registry.redhat.io/rhceph/rhceph-7-rhel9:latest                           -n client.rgw.rgw...  5 hours ago        Up 5 hours                          ceph-4b03232f-ef84-52b5-b133-840da55c83ac-rgw-rgw-osp-compute-dgskzzfi-0-zyfbez
+[root@osp-compute-dgskzzfi-0 4b03232f-ef84-52b5-b133-840da55c83ac]# podman exec -it f8c3b3e7ad84 bash
+[root@osp-compute-dgskzzfi-0 /]# ps -efwww
+UID          PID    PPID  C STIME TTY          TIME CMD
+root           1       0  0 10:49 ?        00:00:00 /run/podman-init -- /usr/bin/radosgw -n client.rgw.rgw.osp-compute-dgskzzfi-0.zyfbez -f --setuser ceph --setgroup ceph --default-log-to-file=false --default-log-to-journald=true --default-log-to-stderr=false
+root           2       1  0 10:49 ?        00:00:48 /usr/bin/radosgw -n client.rgw.rgw.osp-compute-dgskzzfi-0.zyfbez -f --setuser ceph --setgroup ceph --default-log-to-file=false --default-log-to-journald=true --default-log-to-stderr=false
+root         103       0  0 15:38 pts/0    00:00:00 bash
+root         111     103  0 15:38 pts/0    00:00:00 ps -efwww
+[root@osp-compute-dgskzzfi-0 /]# /usr/bin/radosgw -n client.rgw.rgw.osp-compute-dgskzzfi-0.zyfbez -f --setuser ceph --setgroup ceph --default-log-to-file=false --default-log-to-journald=true --default-log-to-stderr=false
+2025-04-01T15:38:27.048+0000 7fe721e16940 -1 ssl_private_key was not found: rgw/cert/default/default.key
+2025-04-01T15:38:27.050+0000 7fe721e16940 -1 failed to use ssl_certificate=config://rgw/cert/rgw.rgw as a private key: unsupported (DECODER routines)
+2025-04-01T15:38:27.050+0000 7fe721e16940 -1 no ssl_certificate configured for ssl_endpoint
+2025-04-01T15:38:27.050+0000 7fe721e16940 -1 ERROR: failed initializing frontend
+^C2025-04-01T15:41:43.424+0000 7fe71e5a6640 -1 received  signal: Interrupt, si_code : 128, si_value (int): 0, si_value (ptr): 0, si_errno: 0, si_pid : 0, si_uid : 0, si_addr0, si_status0
+2025-04-01T15:41:43.424+0000 7fe721e16940 -1 shutting down
+[root@osp-compute-dgskzzfi-0 /]#
+
+
+
+so.... rgw is not able to use the cert and key configured via spec
+
+we edited the spec manually and removed the quotes in the spec part and rgw and ingress was happy.
+
+

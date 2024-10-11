@@ -17,6 +17,41 @@ sudo cephadm shell ceph -W cephadm --watch-debug
 sudo cephadm shell ceph config set mgr mgr/cephadm/log_to_cluster_level debug
 
 
+refere ceph_logging_and_troubleshooting.md for detailed info
+
+# ceph osd debugging
+
+#ceph osd perf
+#ceph tell osd.* bench
+#ceph osd stat
+#ceph osd tree
+#rbd ls -l -p images
+#rbd ls -l -p volumes
+#ceph pg ls-by-pool images
+#ceph pg ls-by-pool volumes
+#ceph pg dump
+
+
+#ceph tell osd.* config set debug_osd 20/20
+
+find the pool num for images pool
+#ceph osd pool ls detail
+
+#find all the pgs in the pool images 
+ceph pg dump | grep <poolnum>
+
+#osds in the pg can be fetched using one of the commands
+ceph pg {poolnum}.{pg-id} query
+
+
+#ceph mgr module enable insights 
+#ceph insights
+ #The insights module collects and exposes system information to the Insights Core data analysis framework
+
+osdmaptool  to experment and understand mapping
+https://docs.ceph.com/en/reef/man/8/osdmaptool/
+
+
 ## podman
 
 sudo podman ps --format '{{ .Names }}G
@@ -120,6 +155,23 @@ vi /var/log/ceph/cep
 
 watch ceph orch ps
 
+
+
+ceph osd map <pool name> <objectname>
+
+# this will return the PG name that associates with the pool and object.
+
+
+https://docs.ceph.com/en/reef/man/8/osdmaptool/
+
+To create a simple map with 16 devices:
+#osdmaptool --createsimple 16 osdmap --clobber
+
+To view the result:
+#osdmaptool --print osdmap
+
+To view the mappings of placement groups for pool 1:
+#osdmaptool osdmap --test-map-pgs-dump --pool 1
 
 
 

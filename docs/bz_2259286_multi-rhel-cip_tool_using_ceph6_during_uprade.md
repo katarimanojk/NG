@@ -361,10 +361,69 @@ tripleo-admin@controller-0 ~]$ cat play.yaml
 
 
 
+after the fix juan observed some issue in the jobs
+
+
+i see that juan updated containers-prepare-parameter.yaml for this recent runs
+
+he used these
+   ceph_namespace: registry.redhat.io/rhceph
+      ceph_image: rhceph-5-rhel8
+      ceph_tag: '5
+
+instead of the values used in the jobs
+   ceph_namespace: registry-proxy.engineering.redhat.com/rh-osbs
+      ceph_image: rhceph
+      ceph_tag: '5'
+
+
+
+when we run
+
+openstack overcloud external-upgrade run ${EXTERNAL_ANSWER} \
+    --stack qe-Cloud-0 \
+    --skip-tags "ceph_health,opendev-validation,ceph_ansible_remote_tmp" \
+    --tags cephadm_adopt
 
 
 
 
+
+
+it failed like this:
+
+PLAY [External upgrade step 0] *************************************************
+[WARNING]: any_errors_fatal only stops any future tasks running on the host
+that fails with the tripleo_free strategy.
+2024-04-30 14:34:14.158571 | 525400a1-1dc0-e1d1-0c27-00000000002f |       TASK | Get Ceph version
+2024-04-30 14:34:14.853971 | 525400a1-1dc0-e1d1-0c27-00000000002f |    CHANGED | Get Ceph version | undercloud
+2024-04-30 14:34:14.855653 | 525400a1-1dc0-e1d1-0c27-00000000002f |     TIMING | ceph : Get Ceph version | undercloud | 0:00:03.846157 | 0.70s
+2024-04-30 14:34:14.871782 | 525400a1-1dc0-e1d1-0c27-000000000030 |       TASK | print
+2024-04-30 14:34:14.902244 | 525400a1-1dc0-e1d1-0c27-000000000030 |         OK | print | undercloud | result={
+    "changed": false,
+    "msg": {
+        "changed": true,
+        "cmd": "podman run --rm --entrypoint=ceph registry.redhat.io/rhceph/rhceph-5-rhel8:5 -v | awk '{print $5}'",
+        "delta": "0:00:00.238218",
+        "end": "2024-04-30 14:34:14.823052",
+        "failed": false,
+        "rc": 0,
+        "start": "2024-04-30 14:34:14.584834",
+        "stderr": "Trying to pull registry.redhat.io/rhceph/rhceph-5-rhel8:5...\nError: Error initializing source docker://registry.redhat.io/rhceph/rhceph-5-rhel8:5: unable to retrieve auth token: invalid username/password: unauthorized: Please login to the Red Hat Registry using your Customer Portal credentials. Further instructions can be found here: https://access.redhat.com/RegistryAuthentication",
+        "stderr_lines": [
+            "Trying to pull registry.redhat.io/rhceph/rhceph-5-rhel8:5...",
+            "Error: Error initializing source docker://registry.redhat.io/rhceph/rhceph-5-rhel8:5: unable to retrieve auth token: invalid username/password: unauthorized: Please login to the Red Hat Registry using your Customer Portal credentials. Further instructions can be found here: https://access.redhat.com/RegistryAuthentication"
+        ],
+        "stdout": "",
+        "stdout_lines": []
+    }
+}
+2024-04-30 14:34:14.904594 | 525400a1-1dc0-e1d1-0c27-000000000030 |     TIMING | ceph : print | undercloud | 0:00:03.895085 | 0.03s
+2024-04-30 14:34:14.921235 | 525400a1-1dc0-e1d1-0c27-000000000031 |       TASK | Check for valid ceph version during FFU
+2024-04-30 14:34:14.962755 | 525400a1-1dc0-e1d1-0c27-000000000031 |      FATAL | Check for valid ceph version during FFU | undercloud | error={"changed": false, "msg": "Target ceph version cannot be  for FFU."}
+
+
+we had to to podman login registry.redhat.io from the undercloud to resolve this issue
 
 
 
